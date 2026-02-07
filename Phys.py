@@ -7,9 +7,6 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 from PIL import Image
 import plotly.io as pio
-import webbrowser
-
-webbrowser.open("http://localhost:8501")
 
 st.set_page_config(layout="wide")
 st.title("Temps vs Position 📊")
@@ -152,3 +149,4 @@ with col2:
 
     else:
         st.info("Ajoute au moins 2 points")
+
