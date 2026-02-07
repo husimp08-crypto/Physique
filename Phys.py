@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import random
 import matplotlib.pyplot as plt
 from io import BytesIO
 from PIL import Image
-import plotly.io as pio
 
-st.set_page_config(layout="wide")
-st.title("Temps vs Position 📊")
+st.set_page_config(layout="wide", page_title="Temps vs Position")
+st.title("Temps vs Position 📊 (Temps réel)")
 
 # =====================
 # INITIALISATION
@@ -74,10 +72,10 @@ with col2:
 
         # Régression linéaire
         a, b = np.polyfit(t, p, 1)
-
         t_line = np.linspace(t.min(), t.max(), 100)
         p_line = a * t_line + b
 
+        # Graphique interactif Plotly pour l'application
         fig = px.scatter(
             df,
             x="Temps",
@@ -85,57 +83,62 @@ with col2:
             text="ID",
             hover_data={"ID": True, "Temps": ":.2f", "Position": ":.3f"}
         )
-
-        fig.add_scatter(
-            x=t_line,
-            y=p_line,
-            mode="lines",
-            name="Droite moyenne"
-        )
-
+        fig.add_scatter(x=t_line, y=p_line, mode="lines", name="Droite moyenne")
         fig.update_traces(textposition="top center")
-
-        fig.update_layout(
-            xaxis_title="Temps (s)",
-            yaxis_title="Position (m)"
-        )
+        fig.update_layout(xaxis_title="Temps (s)", yaxis_title="Position (m)")
 
         st.plotly_chart(fig, use_container_width=True)
         st.caption(f"Droite moyenne : Position = {a:.3f} × Temps + {b:.3f}")
 
         # =====================
-        # BOUTON DE TÉLÉCHARGEMENT COMBINÉ
+        # EXPORT PNG COMBINÉ (matplotlib)
         # =====================
         st.subheader("📥 Télécharger tableau + graphique en une seule image")
 
-        # 1️⃣ Tableau en image via matplotlib
+        # --- 1️⃣ Tableau en image ---
         buffer_table = BytesIO()
-        fig_table, ax = plt.subplots(figsize=(8, 4))
+        fig_width_inch = 8
+        fig_height_inch = 5
+        fig_table, ax = plt.subplots(figsize=(fig_width_inch, fig_height_inch))
         ax.axis('off')
-        tbl = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+        tbl = ax.table(
+            cellText=df.values,
+            colLabels=df.columns,
+            cellLoc='center',
+            loc='center'
+        )
         tbl.auto_set_font_size(False)
-        tbl.set_fontsize(10)
-        tbl.scale(1, 1.5)
+        tbl.set_fontsize(12)
+        tbl.scale(1.5, 2)
         plt.tight_layout()
-        fig_table.savefig(buffer_table, format='png')
+        fig_table.savefig(buffer_table, format='png', dpi=200)
         buffer_table.seek(0)
         plt.close(fig_table)
         img_table = Image.open(buffer_table)
 
-        # 2️⃣ Graphique en image via plotly
+        # --- 2️⃣ Graphique en image matplotlib pour export ---
         buffer_fig = BytesIO()
-        pio.write_image(fig, buffer_fig, format='png', width=800, height=500, scale=2)
+        plt.figure(figsize=(8,5))
+        plt.scatter(df["Temps"], df["Position"], label="Points")
+        plt.plot(t_line, p_line, color='red', label="Droite moyenne")
+        plt.xlabel("Temps (s)")
+        plt.ylabel("Position (m)")
+        plt.title("Temps vs Position")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(buffer_fig, format='png', dpi=200)
+        plt.close()
         buffer_fig.seek(0)
         img_fig = Image.open(buffer_fig)
 
-        # 3️⃣ Combiner les deux verticalement
+        # --- 3️⃣ Combiner tableau + graphique verticalement ---
         total_height = img_table.height + img_fig.height
         total_width = max(img_table.width, img_fig.width)
         combined_img = Image.new('RGB', (total_width, total_height), color='white')
-        combined_img.paste(img_table, (0, 0))
-        combined_img.paste(img_fig, (0, img_table.height))
+        combined_img.paste(img_table, (0,0))
+        combined_img.paste(img_fig, (0,img_table.height))
 
-        # 4️⃣ Bouton de téléchargement
+        # --- 4️⃣ Bouton de téléchargement ---
         buf_combined = BytesIO()
         combined_img.save(buf_combined, format='PNG')
         buf_combined.seek(0)
